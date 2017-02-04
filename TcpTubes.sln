@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25123.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TubeTerminal", "Examples\TubeTerminal\TubeTerminal.csproj", "{237ADBD6-AD4A-4100-8AC2-5877BDECD6B2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TcpTubes", "TcpTubes\TcpTubes.csproj", "{CF3AF607-6082-4998-8522-19209F2DEB9B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimplePingPong", "Examples\SimplePingPong\SimplePingPong.csproj", "{06A70B9F-1F23-46E5-A4BC-15CAAECE824D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{237ADBD6-AD4A-4100-8AC2-5877BDECD6B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{237ADBD6-AD4A-4100-8AC2-5877BDECD6B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{237ADBD6-AD4A-4100-8AC2-5877BDECD6B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{237ADBD6-AD4A-4100-8AC2-5877BDECD6B2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CF3AF607-6082-4998-8522-19209F2DEB9B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CF3AF607-6082-4998-8522-19209F2DEB9B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CF3AF607-6082-4998-8522-19209F2DEB9B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CF3AF607-6082-4998-8522-19209F2DEB9B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06A70B9F-1F23-46E5-A4BC-15CAAECE824D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06A70B9F-1F23-46E5-A4BC-15CAAECE824D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06A70B9F-1F23-46E5-A4BC-15CAAECE824D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06A70B9F-1F23-46E5-A4BC-15CAAECE824D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
