@@ -69,35 +69,29 @@ namespace TubeTerminal.UserControl
 
         private void timerUpdate_Tick(object sender, EventArgs e)
         {
-            // Do we have a running pipe?
-            if (m_Pipe != null)
+            // Is there pending messages to receive?
+            var msg = m_Pipe?.GetMessage();
+            if (msg == null)
+                return;
+
+            // Message recevived, start by logging it
+            txtLogWindow.AppendText($"Recevied {msg.MessageId} from #{msg.SourceId} (payload is {msg.Payload?.Length ?? 0} bytes long)\r\n");
+
+            // Process messages
+            switch (msg.MessageId)
             {
-                // Is there pending messages to receive?
-                uint sourceId;
-                string messageId;
-                byte[] data;
-                if (m_Pipe.GetMessage(out sourceId, out messageId, out data))
-                {
-                    // Message recevived, start by logging it
-                    txtLogWindow.AppendText($"{sourceId} > '{messageId}' (data.Length = {data?.Length})\r\n");
+                case "#terminated":
+                    m_Pipe = null;
+                    UpdateUI();
+                    break;
 
-                    // Process messages
-                    switch (messageId)
-                    {
-                        case "#terminated":
-                            m_Pipe = null;
-                            UpdateUI();
-                            break;
-
-                        case "#connected":
-                            lstConnections.Items.Add(sourceId);
-                            break;
-
-                        case "#disconnected":
-                            lstConnections.Items.Remove(sourceId);
-                            break;
-                    }
-                }
+                case "#connected":
+                case "#disconnected":
+                    // Present connected clients list
+                    lstConnections.Items.Clear();
+                    foreach (var connection in m_Pipe.ConnectedClients)
+                        lstConnections.Items.Add(connection);
+                    break;
             }
         }
 

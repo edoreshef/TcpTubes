@@ -8,13 +8,27 @@ using System.Threading;
 
 namespace TcpTubes
 {
+
     public class Hub
     {
+        /// <summary>
+        /// Use WaitForever to block GetMessage until a message arrives
+        /// </summary>
+        public const int WaitForever = int.MaxValue;
+
+        /// <summary>
+        /// Id of the local hub
+        /// </summary>
         public uint LocalId { get; }
 
         private Dictionary<uint, Tube> m_Tubes = new Dictionary<uint, Tube>();
 
         private BlockingCollection<Message> m_ReceiveQueue = new BlockingCollection<Message>();
+
+        /// <summary>
+        /// A list of connected clients
+        /// </summary>
+        public uint[] ConnectedClients { get; private set; } = new uint[0];
 
         protected void CreatePipe(NetworkStream stream)
         {
@@ -32,62 +46,82 @@ namespace TcpTubes
             StopAcceptingTubes();
 
             // Close existing tubes
-            foreach (var tube in m_Tubes.ToArray())
+            foreach (var tube in SafeGetTubeList())
                 tube.Value.Close();
 
             // Append '#terminated' message to queue
             m_ReceiveQueue.Add(new Message { MessageId = "#terminated" });
         }
 
-        public virtual bool GetMessage(out uint sourceId, out string messageId, out byte[] data, int timeOut = 0)
+        public virtual Capsule GetMessage(int timeOut = 0)
         {
-            // Default outputs
-            sourceId = 0;
-            messageId = "";
-            data = null;
-
             // Take care of house keeping
-            foreach (var tube in m_Tubes)
+            foreach (var tube in SafeGetTubeList())
                 tube.Value.HouseKeeping();
 
             // Try to pull message
             Message msg;
             if (!m_ReceiveQueue.TryTake(out msg, timeOut))
-                return false;
+                return null;
 
             // Is it a '#Connected' message?
             if (msg.MessageId == "#connected")
-                m_Tubes[msg.Source.RemoteId] = msg.Source; // Add tube to list
+                lock (m_Tubes)
+                {
+                    // Add tube to list
+                    m_Tubes[msg.Source.RemoteId] = msg.Source; 
+
+                    // Rebuild connected client list
+                    ConnectedClients = m_Tubes.Select(t => t.Key).ToArray();
+                }
 
             // Is it a '#Disconnected' message?
             if (msg.MessageId == "#disconnected")
-                m_Tubes.Remove(msg.Source.RemoteId); // Remove tube from list
+                lock (m_Tubes)
+                {
+                    // Remove tube from list
+                    m_Tubes.Remove(msg.Source.RemoteId);
 
-            // Build return values
-            sourceId = msg.Source?.RemoteId ?? LocalId;
-            messageId = msg.MessageId;
-            data = msg.Data;
+                    // Rebuild connected client list
+                    ConnectedClients = m_Tubes.Select(t => t.Key).ToArray();
+                }
 
-            // Return data
-            return true;
+            // return capsule
+            return new Capsule
+            {
+                SourceId = msg.Source?.RemoteId ?? LocalId,
+                MessageId = msg.MessageId,
+                Payload = msg.Payload
+            };
         }
 
-        public void SendMessage(string messageId, byte[] data)
+        public void SendMessage(string messageId, byte[] payload)
         {
             // Broadcast message
-            foreach (var tube in m_Tubes)
-                tube.Value.SendMessage(messageId, data);
+            foreach (var tube in SafeGetTubeList())
+                tube.Value.SendMessage(messageId, payload);
         }
 
-        public void SendMessage(uint targetId, string messageId, byte[] data)
+        public void SendMessage(uint targetId, string messageId, byte[] payload)
         {
+            // Get tube
             Tube tube;
-            if (m_Tubes.TryGetValue(targetId, out tube))
-                tube.SendMessage(messageId, data);
+            lock (m_Tubes)
+                if (!m_Tubes.TryGetValue(targetId, out tube))
+                    return;
+
+            // Send message
+            tube.SendMessage(messageId, payload);
         }
 
         protected virtual void StopAcceptingTubes()
         {
+        }
+
+        private KeyValuePair<uint, Tube>[] SafeGetTubeList()
+        {
+            lock (m_Tubes)
+                return m_Tubes.ToArray();
         }
     }
 
@@ -97,9 +131,8 @@ namespace TcpTubes
         private int       m_ListenPort;
 
         private ManualResetEvent m_Terminated = new ManualResetEvent(false);
-        private TcpListener m_TcpListener;
-        private Thread    m_ListenThread;
-
+        private TcpListener      m_TcpListener;
+        private Thread           m_ListenThread;
 
         public TcpServerHub(uint localId, string interfaceIP = "0.0.0.0", int listenPort = 1222): base(localId)
         {
@@ -153,7 +186,6 @@ namespace TcpTubes
             m_TcpListener.Stop();
             m_ListenThread.Join();
         }
-
     }
 
     public class TcpClientHub : Hub
@@ -224,15 +256,15 @@ namespace TcpTubes
             m_ConnectThread.Join();
         }
 
-        public override bool GetMessage(out uint sourceId, out string messageId, out byte[] data, int timeOut = 0)
+        public override Capsule GetMessage(int timeOut = 0)
         {
-            var retVal = base.GetMessage(out sourceId, out messageId, out data, timeOut);
+            var capsule = base.GetMessage(timeOut);
 
             // Track disconnected status
-            if (messageId == "#disconnected")
+            if (capsule?.MessageId == "#disconnected")
                 m_Connected = false;
 
-            return retVal;
+            return capsule;
         }
     }
 }

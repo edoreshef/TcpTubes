@@ -37,21 +37,21 @@ namespace TcpTubes
             m_KeepaliveSender = new Timer(state => SendMessage("#keepalive", null), null, 0, 5000);
         }
 
-        public void SendMessage(string msgId, byte[] msgData)
+        public void SendMessage(string msgId, byte[] payload)
         {
             try
             {
                 // Take care of default values
-                if (msgData == null)
-                    msgData = new byte[0];
+                if (payload == null)
+                    payload = new byte[0];
 
                 // Encode header
                 var header = new byte[256];
                 header[0] = (byte) Encoding.UTF8.GetBytes(msgId, 0, msgId.Length, header, 1);
-                header[1 + header[0] + 0] = (byte) (msgData.Length >> 0);
-                header[1 + header[0] + 1] = (byte) (msgData.Length >> 8);
-                header[1 + header[0] + 2] = (byte) (msgData.Length >> 16);
-                header[1 + header[0] + 3] = (byte) (msgData.Length >> 24);
+                header[1 + header[0] + 0] = (byte) (payload.Length >> 0);
+                header[1 + header[0] + 1] = (byte) (payload.Length >> 8);
+                header[1 + header[0] + 2] = (byte) (payload.Length >> 16);
+                header[1 + header[0] + 3] = (byte) (payload.Length >> 24);
 
                 // Write protection
                 lock (m_WriterLock)
@@ -60,7 +60,7 @@ namespace TcpTubes
                     m_NetworkStream.Write(header, 0, 1 + header[0] + 4);
 
                     // Write data
-                    m_NetworkStream.Write(msgData, 0, msgData.Length);
+                    m_NetworkStream.Write(payload, 0, payload.Length);
                 }
             }
             catch (Exception)
@@ -135,7 +135,7 @@ namespace TcpTubes
                     {
                         Source = this,
                         MessageId = msgId,
-                        Data = new byte[dataLength]
+                        Payload = new byte[dataLength]
                     };
 
                     // read entire data
@@ -143,7 +143,7 @@ namespace TcpTubes
                     while (dataSize < dataLength)
                     {
                         // read data
-                        var readCount = m_NetworkStream.Read(msg.Data, dataSize, (int) dataLength - dataSize);
+                        var readCount = m_NetworkStream.Read(msg.Payload, dataSize, (int) dataLength - dataSize);
                         if (readCount == 0)
                             return;
 
@@ -158,7 +158,7 @@ namespace TcpTubes
                     if (msgId == "#hello")
                     {
                         // Extract remote Id
-                        RemoteId = BitConverter.ToUInt32(msg.Data, 0);
+                        RemoteId = BitConverter.ToUInt32(msg.Payload, 0);
 
                         // Add connected to queue
                         m_ReceiveQueue.Add(new Message {MessageId = "#connected", Source = this});
@@ -191,6 +191,6 @@ namespace TcpTubes
     {
         public Tube Source;
         public string MessageId;
-        public byte[] Data;
+        public byte[] Payload;
     }
 }
