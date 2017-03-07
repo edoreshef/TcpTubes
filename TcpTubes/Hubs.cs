@@ -19,7 +19,7 @@ namespace TcpTubes
         /// <summary>
         /// Id of the local hub
         /// </summary>
-        public uint LocalId { get; }
+        public uint LocalId { get; set; }
 
         private Dictionary<uint, Tube> m_Tubes = new Dictionary<uint, Tube>();
 
@@ -35,9 +35,8 @@ namespace TcpTubes
             new Tube(LocalId, stream, m_ReceiveQueue);
         }
 
-        public Hub(uint localId)
+        public Hub()
         {
-            LocalId = localId;
         }
 
         public void Close()
@@ -65,7 +64,7 @@ namespace TcpTubes
                 return null;
 
             // Is it a '#Connected' message?
-            if (msg.MessageId == "#connected")
+            if (msg.MessageId == InternalMessages.Connected)
                 lock (m_Tubes)
                 {
                     // Add tube to list
@@ -76,7 +75,7 @@ namespace TcpTubes
                 }
 
             // Is it a '#Disconnected' message?
-            if (msg.MessageId == "#disconnected")
+            if (msg.MessageId == InternalMessages.Disconnected)
                 lock (m_Tubes)
                 {
                     // Remove tube from list
@@ -134,7 +133,7 @@ namespace TcpTubes
         private TcpListener      m_TcpListener;
         private Thread           m_ListenThread;
 
-        public TcpServerHub(uint localId, string interfaceIP = "0.0.0.0", int listenPort = 1222): base(localId)
+        public TcpServerHub(string interfaceIP = "0.0.0.0", int listenPort = 1222)
         {
             // Save adapter and port
             m_InterfaceIP = IPAddress.Parse(interfaceIP);
@@ -163,6 +162,9 @@ namespace TcpTubes
                     // Perform a blocking call to accept requests.
                     // You could also user server.AcceptSocket() here.
                     var client = m_TcpListener.AcceptTcpClient();
+
+                    // Configure client connection
+                    client.NoDelay = true;
 
                     // Start pipe
                     CreatePipe(client.GetStream());
@@ -197,11 +199,14 @@ namespace TcpTubes
         private Thread m_ConnectThread;
         private ManualResetEvent m_Terminated = new ManualResetEvent(false);
 
-        public TcpClientHub(uint localId, string serverAddress, int serverPort): base(localId)
+        public TcpClientHub(string serverAddress, int serverPort)
         {
             // Save adapter and port
             m_ServerAddress = serverAddress;
             m_ServerPort    = serverPort;
+
+            // By default servers ID is '1000'
+            LocalId = 1000;
 
             // Start thread
             m_ConnectThread = new Thread(ConnectingThread);
@@ -235,6 +240,13 @@ namespace TcpTubes
                     client = new TcpClient();
                     if (!client.ConnectAsync(m_ServerAddress, m_ServerPort).Wait(2000))
                         continue;
+
+                    // Configure client connection
+                    if (LocalId == 0)
+                    {
+                        LocalId = ((IPEndPoint) client.Client.LocalEndPoint).Address.GetAddressBytes().Last();
+                    }
+                    client.NoDelay = true;
 
                     // Remember that we're connect so we wont reconnect again
                     m_Connected = true;
