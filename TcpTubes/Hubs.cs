@@ -19,7 +19,7 @@ namespace TcpTubes
         /// <summary>
         /// Id of the local hub
         /// </summary>
-        public uint LocalId { get; set; }
+        public uint LocalId { get; }
 
         private Dictionary<uint, Tube> m_Tubes = new Dictionary<uint, Tube>();
 
@@ -35,8 +35,9 @@ namespace TcpTubes
             new Tube(LocalId, stream, m_ReceiveQueue);
         }
 
-        public Hub()
+        public Hub(uint localId)
         {
+            LocalId = localId;
         }
 
         public void Close()
@@ -133,7 +134,7 @@ namespace TcpTubes
         private TcpListener      m_TcpListener;
         private Thread           m_ListenThread;
 
-        public TcpServerHub(string interfaceIP = "0.0.0.0", int listenPort = 1222)
+        public TcpServerHub(uint localId, string interfaceIP = "0.0.0.0", int listenPort = 1222): base(localId)
         {
             // Save adapter and port
             m_InterfaceIP = IPAddress.Parse(interfaceIP);
@@ -199,14 +200,11 @@ namespace TcpTubes
         private Thread m_ConnectThread;
         private ManualResetEvent m_Terminated = new ManualResetEvent(false);
 
-        public TcpClientHub(string serverAddress, int serverPort)
+        public TcpClientHub(uint localId, string serverAddress, int serverPort): base(localId)
         {
             // Save adapter and port
             m_ServerAddress = serverAddress;
             m_ServerPort    = serverPort;
-
-            // By default servers ID is '1000'
-            LocalId = 1000;
 
             // Start thread
             m_ConnectThread = new Thread(ConnectingThread);
@@ -242,10 +240,6 @@ namespace TcpTubes
                         continue;
 
                     // Configure client connection
-                    if (LocalId == 0)
-                    {
-                        LocalId = ((IPEndPoint) client.Client.LocalEndPoint).Address.GetAddressBytes().Last();
-                    }
                     client.NoDelay = true;
 
                     // Remember that we're connect so we wont reconnect again
